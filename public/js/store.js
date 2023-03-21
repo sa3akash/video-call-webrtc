@@ -5,6 +5,7 @@ let state = {
     screenSharingActive: false,
     screenSharingStream: null,
     allowConnectionsFromStrangers: false,
+    callState: false
   };
   
   export const setSocketId = (socketId) => {

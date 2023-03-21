@@ -1,152 +1,238 @@
 import * as wss from "./wss.js";
 import * as constants from "./constants.js";
 import * as ui from "./ui.js";
-import * as store from "./store.js"
+import * as store from "./store.js";
 
-let connectUserDetails;
-let peerConnection;
+let connectedUserDetails;
+let peerConnections;
 
-
-const configuration = {
-    iceServers:[
-        {urls:"stun:stun.l.google.com:13902"},
-        {urls:"stun:stun.l.google.com:19302"},
-        {urls:"stun:stun1.l.google.com:19302"},
-        {urls:"stun:stun2.l.google.com:19302"},
-        {urls:"stun:stun3.l.google.com:19302"},
-    ]
-}
-
-const defaultConstaints = {
-    audio:true,
-    video:true
-}
-
-export const getLocalPreview = () => {
-    navigator.mediaDevices.getUserMedia(defaultConstaints)
-    .then((streem)=>{
-        ui.updateLocalVideo(streem)
-        store.setLocalStream(streem)
+export const getLocalPreviews = () => {
+    navigator.mediaDevices.getUserMedia({audio: true, video: true}).then((stream)=>{
+        ui.updateLocalStream(stream)
+        store.setLocalStream(stream)
     }).catch((err)=>{
-        console.log("err show when get camera or audio")
+        console.log("error when get camera or mycrophone access.")
         console.log(err)
     })
 }
 
+// create local peer connecton
+const configarations = {
+    iceServers: [
+        {urls: "stun:stun.l.google.com:13902"},
+        {urls: "stun:stun.l.google.com:19302"},
+        {urls: "stun:stun1.l.google.com:19302"},
+        {urls: "stun:stun2.l.google.com:19302"},
+        {urls: "stun:stun3.l.google.com:19302"},
+    ]
+}
+
+
 const createPeerConnection = () => {
-    peerConnection = new RTCPeerConnection(configuration)
+    peerConnections = new RTCPeerConnection(configarations)
 
-    peerConnection.onicecandidate = (event) => {
-        console.log("geeting ice candidates form stun server")
-        if (event.candidate) {
-            
+    peerConnections.onicecandidate = (event)=>{
+        // console.log(event)
+        if(event.candidate){
+            // send your ice candidate to others
+            wss.sendDataUsingWebRTC({
+                connectedUserSocketId: connectedUserDetails.socketId,
+                type: constants.webRTCSingnaling.ICE_CANDIDATE,
+                candidate: event.candidate
+            })
         }
     }
 
-    peerConnection.onconnectionstatechange = (event) => {
-        if(peerConnection.connectionState === "connected"){
-            console.log("succesfully connected with other peer")
+    peerConnections.oniceconnectionstatechange = event =>{
+        if(peerConnections.connectionState === "connected"){
+            console.log("successfully connected others peer")
         }
     }
 
-    // reciving track
+    /// receiving tracks
+    const remoteStream = new MediaStream()
+    store.setRemoteStream(remoteStream)
+    ui.updateRemoteVideo(remoteStream)
 
-    const remoteStreem = new MediaStream();
-    store.setRemoteStream(remoteStreem)
-    ui.updateRemoteVideo(remoteStreem)
+    peerConnections.ontrack = (e) => {
+        remoteStream.addTrack(e.track)
+    }
+
+    // add your strem to connection
+    if(connectedUserDetails.callType === constants.callType.VIDEO_PERSONAL_CODE){
+        const localStream = store.getState().localStream;
+
+        for (const track of localStream.getTracks()){
+            peerConnections.addTrack(track, localStream)
+        }
+    }
+
 }
 
 
-export const sendPreOffer = (callType,calleePersonalCode) => {
-    connectUserDetails = {
-        socketId: calleePersonalCode,
-        callType: callType
+
+// send preOffer
+export const sendPreOffer = (callType, callePersonalCode) => {
+    connectedUserDetails = {
+        socketId: callePersonalCode,
+        callType
     }
-    
     if(callType === constants.callType.CHAT_PERSONAL_CODE || callType === constants.callType.VIDEO_PERSONAL_CODE){
-        const data = {
-            callType: callType,
-            calleePersonalCode: calleePersonalCode
-        }
+        const data = {callType, callePersonalCode}
         wss.sendPreOffer(data)
-
-        ui.showCallingDialog(callType,callerRejectHandler)
-        console.log(data)
-     }
-    
+        ui.showCallingDialog(callCancelHandler)
+    }
+   
 }
 
 
-export const handlePreOffer = (data) =>{
-     const {callType,callerSocketId} = data;
-
-     connectUserDetails = {
+export const handlePreOffer = (data) => {
+    const {callType,callerSocketId} = data;
+    connectedUserDetails = {
         socketId: callerSocketId,
-        callType: callType
-     }
-     console.log(data)
-
-     if(callType === constants.callType.CHAT_PERSONAL_CODE || callType === constants.callType.VIDEO_PERSONAL_CODE){
-        ui.showIncomingCallDialog(callType, acceptCallHandler,rejectCallHandler)
-     }
+        callType
+    }
+    if(callType === constants.callType.CHAT_PERSONAL_CODE || callType === constants.callType.VIDEO_PERSONAL_CODE){
+        ui.showIncomingCall(callType,acceptCallHandler,rejectCallHandler)
+    }
 }
 
 
-
-
-const acceptCallHandler = () => {
-    console.log("call accepted")
+const acceptCallHandler = () =>{
+    createPeerConnection()
     sendPreOfferAnswer(constants.preOfferAnswer.CALL_ACCEPTED)
-    ui.showCallElements(connectUserDetails.callType)
+    ui.showCallEliments(connectedUserDetails.callType)
 }
 
-const rejectCallHandler = () => {
-    console.log("call rejected")
+
+const rejectCallHandler = () =>{
     sendPreOfferAnswer(constants.preOfferAnswer.CALL_REJECTED)
-
 }
 
-// call rejection
-const callerRejectHandler = () => {
-    console.log("call cancel")
 
+const callCancelHandler = () =>{
 }
 
 
 const sendPreOfferAnswer = (preOfferAnswer) => {
     const data = {
-        callerSocketId: connectUserDetails.socketId,
+        callerSocketId: connectedUserDetails.socketId,
         preOfferAnswer: preOfferAnswer
     }
-    ui.removeAllDialogs()
-    wss.sendPreOfferAns(data)
+    ui.removeAllDialog()
+    wss.sendPreOfferAnswer(data)
 }
 
 
+export const handlePreOfferAnswer = ({preOfferAnswer}) => {
+    ui.removeAllDialog()
 
-export const handlePreOfferAns = (data) => {
-    const {callerSocketId,preOfferAnswer} = data;
-
-    ui.removeAllDialogs()
-
-    console.log("pre offer check")
-    console.log(data)
 
     if(preOfferAnswer === constants.preOfferAnswer.CALLEE_NOT_FOUND){
-        // show dilog colle not found
         ui.showInfoDialog(preOfferAnswer)
     }
     if(preOfferAnswer === constants.preOfferAnswer.CALL_UNAVAILABLE){
-        // show dilog colle not able to connect
         ui.showInfoDialog(preOfferAnswer)
     }
     if(preOfferAnswer === constants.preOfferAnswer.CALL_REJECTED){
-        // show dilog colle rejected by the colle
         ui.showInfoDialog(preOfferAnswer)
     }
     if(preOfferAnswer === constants.preOfferAnswer.CALL_ACCEPTED){
-        // send webRTC offer
-        ui.showCallElements(connectUserDetails.callType)
-
+        ui.showCallEliments(connectedUserDetails.callType)
+        createPeerConnection()
+        sendWebRTCOffer()
     }
+}
+
+
+// sender
+const sendWebRTCOffer = async () => {
+    const offer = await peerConnections.createOffer()
+    await peerConnections.setLocalDescription(offer)
+
+    wss.sendDataUsingWebRTC({
+        connectedUserSocketId: connectedUserDetails.socketId,
+        type: constants.webRTCSingnaling.OFFER,
+        offer: offer
+    })
+}
+
+//receiver
+export const handleWebRTCOffer = async (data) => {
+    await peerConnections.setRemoteDescription(data.offer)
+
+    const answer = await peerConnections.createAnswer()
+    await peerConnections.setLocalDescription(answer)
+    wss.sendDataUsingWebRTC({
+        connectedUserSocketId: connectedUserDetails.socketId,
+        type: constants.webRTCSingnaling.ANSWER,
+        answer: answer
+    })
+}
+
+
+/// handle webrtc ans
+
+export const handleWebRTCAnswer = async (data) => {
+    console.log("handle webrtc answer")
+    await peerConnections.setRemoteDescription(data.answer)
+}
+
+
+// handle webrtc candidate
+export const handleWebrtcCandidate = async (data) => {
+    console.log("handle incoming web rtc")
+    try{
+        await peerConnections.addIceCandidate(data.candidate)
+    }catch(err){
+        console.log(err)
+    }
+}
+
+
+/// screem sharing active
+let screenSharingStream;
+export const swithBetweenCameraScreem = async (isScreenSharingActive) => {
+    try{
+        if(isScreenSharingActive){
+            backOtLocal(isScreenSharingActive)
+        }else{
+            console.log("switing for screen sharing")
+            screenSharingStream = await navigator.mediaDevices.getDisplayMedia({video:true})
+            store.setScreenSharingStream(screenSharingStream)
+            //replace video tracks
+            const senders = peerConnections.getSenders();
+            const sender = senders.find((s)=> s.track.kind === screenSharingStream.getVideoTracks()[0].kind)
+            if(sender){
+                sender.replaceTrack(screenSharingStream.getVideoTracks()[0])
+            }
+            // on click stop sharing button
+            screenSharingStream.getVideoTracks()[0].onended = () => {
+                backOtLocal(isScreenSharingActive)
+              };
+              
+            store.setScreenSharingActive(!isScreenSharingActive)
+            ui.updateLocalStream(screenSharingStream)
+        }
+    }catch(err){
+        console.log(err)
+    }
+}
+
+
+/// back too local stram
+
+const backOtLocal = (isScreenSharingActive) => {
+    // if screen sharing is activ then swith base to camera
+    const localStream = store.getState().localStream;
+    //replace video tracks
+    const senders = peerConnections.getSenders();
+    const sender = senders.find((s)=> s.track.kind === localStream.getVideoTracks()[0].kind)
+    if(sender){
+        sender.replaceTrack(localStream.getVideoTracks()[0])
+    }
+    //stop sreen sharing stream
+    store.getState().screenSharingStream.getTracks().forEach(track=>track.stop())
+    store.setScreenSharingActive(!isScreenSharingActive)
+    ui.updateLocalStream(localStream)
 }

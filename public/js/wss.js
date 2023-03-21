@@ -1,28 +1,49 @@
-import * as store from './store.js';
+import * as store from "./store.js";
 import * as ui from "./ui.js";
 import * as webRTCHandler from "./webRTCHandler.js";
+import * as constants from "./constants.js";
 
 
-let socketIO = null;
-
+let socketIO;
 export const registerSocketEvents = (socket) => {
-    socket.on("connect",()=>{
-        socketIO = socket;
-        console.log(`successfully connected to socket.io server`)
-        store.setSocketId(socket.id)
-        ui.updatePersonalCode(socket.id)
-    })
+    socketIO = socket
+  //socket connect
+  socket.on("connect", () => {
+    console.log(socket.id)
+    store.setSocketId(socket.id);
+    ui.updatePersonalCode(socket.id)
+  });
+// other listener here
 
-    socket.on("pre-offer",(data)=>{
-        webRTCHandler.handlePreOffer(data)
-    })
+  // pre offer listen
+  socket.on("pre-offer", (data) => {
+    // webrtc handle pre offer
+    webRTCHandler.handlePreOffer(data)
+  });
+  // pre offer answer listen
+  socket.on("pre-offer-answer", (data) => {
+    // webrtc handle pre offer
+    webRTCHandler.handlePreOfferAnswer(data)
+  });
 
-    socket.on("pre-offer-ans",(data)=>{
-        webRTCHandler.handlePreOfferAns(data)
-    })
+  // webrtc signaling server
+  socket.on("webRTC_signaling", (data)=>{
+    switch(data.type){
+      case constants.webRTCSingnaling.OFFER : 
+          webRTCHandler.handleWebRTCOffer(data)
+          break;
+      case constants.webRTCSingnaling.ANSWER : 
+          webRTCHandler.handleWebRTCAnswer(data)
+          break;
+      case constants.webRTCSingnaling.ICE_CANDIDATE : 
+          webRTCHandler.handleWebrtcCandidate(data)
+          break;
+        default : 
+          return
+    }
+  })
 
-}
-
+};
 
 
 export const sendPreOffer = (data) => {
@@ -30,7 +51,14 @@ export const sendPreOffer = (data) => {
 }
 
 
-
-export const sendPreOfferAns = (data) => {
-    socketIO.emit("pre-offer-ans",data)
+export const sendPreOfferAnswer = (data) => {
+  socketIO.emit("pre-offer-answer",data)
 }
+
+
+// send data using webrtc
+export const sendDataUsingWebRTC = (data) => {
+  socketIO.emit("webRTC_signaling", data)
+
+}
+

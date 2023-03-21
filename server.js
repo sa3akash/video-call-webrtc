@@ -1,72 +1,84 @@
-const express = require("express")
-const http = require("http")
+const express = require("express");
+const http = require("http");
+const app = express();
 
-const app = express()
-const server = http.createServer(app)
-const io = require("socket.io")(server)
-// middlewares
-app.use(express.static("public"))
-app.use(express.json())
-app.use(express.urlencoded({extended:true}))
+const server = http.createServer(app);
+const io = require("socket.io")(server);
+
+app.use(express.static("public"));
 
 // routes
 app.get("/",(req,res)=>{
-    res.sendFile(__dirname + "/public/index.html")
+    res.sendFile(__dirname+"/index.html");
 })
 
 
-// socket io
 
-let connectedPeers = [];
+// socket connection
 
-io.on("connection",(socket)=>{
-    console.log(`User connected to socket.io ${socket.id}`)
+let connectedPeers = []
+
+
+io.on("connect",(socket)=>{
+    console.log(`User connected from socket.io ${socket.id}`)
+    // add user to connectedPeers array
     connectedPeers.push(socket.id)
 
 
-    socket.on("pre-offer", (data)=>{
-        const {callType,calleePersonalCode} = data;
 
-        const connectedPear = connectedPeers.find(pearId=>pearId ===calleePersonalCode)
-        
-        if(connectedPear) {
+    // pre offer 
+    socket.on("pre-offer",(data)=>{
+        const {callType,callePersonalCode} = data;
+        const userExist = connectedPeers.find((id)=> id === callePersonalCode)
+        if(userExist){
             const data = {
-                callerSocketId:socket.id,
-                callType
+                callType,
+                callerSocketId : socket.id
             }
-            io.to(calleePersonalCode).emit("pre-offer",data)
+            io.to(callePersonalCode).emit("pre-offer",data)
         }else{
             const data = {
-                preOfferAnswer:"CALLEE_NOT_FOUND"
+                preOfferAnswer: "CALLEE_NOT_FOUND"
             }
-            io.to(socket.id).emit("pre-offer-ans",data)
+            io.to(socket.id).emit("pre-offer-answer",data)
         }
-    });
+    })
 
-
-    socket.on("pre-offer-ans",(data)=>{
-
+    // pre offer answer
+    socket.on("pre-offer-answer",(data)=>{
         const {callerSocketId,preOfferAnswer} = data;
-
-        console.log(data)
-        const connectedPear = connectedPeers.find(pearId=>pearId ===callerSocketId)
-        
-        if(connectedPear) {
-            io.to(callerSocketId).emit("pre-offer-ans",data)
+        const userExist = connectedPeers.find((id)=> id === callerSocketId)
+        if(userExist){
+            const readyData = {
+                preOfferAnswer
+            }
+            io.to(callerSocketId).emit("pre-offer-answer",readyData)
         }
+    })
 
+    // webrtc signaling
+    socket.on("webRTC_signaling", (data)=>{
+        const {connectedUserSocketId} = data;
+        const userExist = connectedPeers.find((id)=> id === connectedUserSocketId)
+        if(userExist){
+            io.to(connectedUserSocketId).emit("webRTC_signaling",data)
+        }
     })
 
 
+    //after user disconnect
     socket.on("disconnect",()=>{
         console.log(`User disconnected from socket.io ${socket.id}`)
         // remove user to connectpeers
         connectedPeers.splice(connectedPeers.indexOf(socket.id),1)
     })
+
+    
 })
 
 
 
 
+// start server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () =>console.log(`Server running on port ${PORT}`))
+server.listen(PORT,()=>console.log(`server start on port=${PORT}`))
