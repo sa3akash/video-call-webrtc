@@ -73,3 +73,24 @@ screemSharingButton.addEventListener("click",()=>{
     webRTCHandler.swithBetweenCameraScreem(isScreenSharingActive)
 })
 
+
+
+//data channel messenger listener
+
+const newMessageInput = document.getElementById("new_message_input")
+newMessageInput.addEventListener("keydown",(e)=>{
+    if(e.key === "Enter"){
+        webRTCHandler.sendMessageUsingDataChannel(e.target.value)
+        ui.appendMessage(e.target.value,true)
+        newMessageInput.value = ""
+    }
+})
+
+/// message send button listener
+const messageButton = document.getElementById("send_message_button")
+messageButton.addEventListener("click",(e)=>{
+    webRTCHandler.sendMessageUsingDataChannel(newMessageInput.value)
+    ui.appendMessage(e.target.value,true)
+    newMessageInput.value = ""
+})
+

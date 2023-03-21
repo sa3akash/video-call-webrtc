@@ -5,6 +5,7 @@ import * as store from "./store.js";
 
 let connectedUserDetails;
 let peerConnections;
+let dataChannel;
 
 export const getLocalPreviews = () => {
     navigator.mediaDevices.getUserMedia({audio: true, video: true}).then((stream)=>{
@@ -20,16 +21,36 @@ export const getLocalPreviews = () => {
 const configarations = {
     iceServers: [
         {urls: "stun:stun.l.google.com:13902"},
-        {urls: "stun:stun.l.google.com:19302"},
         {urls: "stun:stun1.l.google.com:19302"},
         {urls: "stun:stun2.l.google.com:19302"},
         {urls: "stun:stun3.l.google.com:19302"},
+        {urls: "stun:stun4.l.google.com:19302"},
     ]
 }
 
 
 const createPeerConnection = () => {
     peerConnections = new RTCPeerConnection(configarations)
+
+    //datachannel
+    dataChannel = peerConnections.createDataChannel("chat")
+
+    peerConnections.ondatachannel = (e) => {
+       const channelData = e.channel
+       channelData.onopen = () => {
+            console.log("datachannel open")
+        }
+        channelData.onclose = () => {
+            console.log("datachannel close")
+        }
+        channelData.onmessage = (e) => {
+            const message = JSON.parse(e.data)
+            console.log(message)
+            ui.appendMessage(message)
+        }
+    }
+
+//datachannel end
 
     peerConnections.onicecandidate = (event)=>{
         // console.log(event)
@@ -210,7 +231,7 @@ export const swithBetweenCameraScreem = async (isScreenSharingActive) => {
             screenSharingStream.getVideoTracks()[0].onended = () => {
                 backOtLocal(isScreenSharingActive)
               };
-              
+
             store.setScreenSharingActive(!isScreenSharingActive)
             ui.updateLocalStream(screenSharingStream)
         }
@@ -221,7 +242,6 @@ export const swithBetweenCameraScreem = async (isScreenSharingActive) => {
 
 
 /// back too local stram
-
 const backOtLocal = (isScreenSharingActive) => {
     // if screen sharing is activ then swith base to camera
     const localStream = store.getState().localStream;
@@ -235,4 +255,13 @@ const backOtLocal = (isScreenSharingActive) => {
     store.getState().screenSharingStream.getTracks().forEach(track=>track.stop())
     store.setScreenSharingActive(!isScreenSharingActive)
     ui.updateLocalStream(localStream)
+}
+
+
+
+////data channel work 
+
+export const sendMessageUsingDataChannel = (message) => {
+    const stringfyMessage = JSON.stringify(message)
+    dataChannel.send(stringfyMessage)
 }

@@ -15,10 +15,6 @@ export const updateLocalStream = (stream) => {
 export const updateRemoteVideo = (stream) => {
   const remoteVideo = document.getElementById("remote_video")
   remoteVideo.srcObject = stream
-  
-  // remoteVideo.addEventListener("onloadedmetadata",()=>{
-  //   remoteVideo.play()
-  // })
 }
 
 
@@ -166,5 +162,23 @@ export const updateCameraButton = (cameraEnabled) => {
   micButtonImg.src = cameraEnabled ? cameraOff : cameraOn;
 }
 
+
+
+
+/// message
+export const appendMessage = (message,right=false)=>{
+  const messageContainer = document.getElementById("messages_container")
+  const messageEliment = right ? eliments.getRightMessage(message) : eliments.getLeftMessage(message)
+
+  messageContainer.appendChild(messageEliment)
+}
+
+
+
+/// message
+export const clearMessage = (message,right=false)=>{
+  const messageContainer = document.getElementById("messages_container")
+  messageContainer.querySelectorAll("*").forEach(c=>c.remove())
+}
 
 
