@@ -182,3 +182,42 @@ export const clearMessage = (message,right=false)=>{
 }
 
 
+
+
+
+/////===================recording=================//// 
+
+
+export const showRecordingPanel = () => {
+  const recordingButton = document.getElementById("video_recording_buttons")
+  showEliments(recordingButton)
+  // hide recording button if it's active
+  const startRecordingButton = document.getElementById("start_recording_button")
+  hideEliments(startRecordingButton)
+
+}
+
+
+/// reset recording button
+export const resetRecordingPanel = () => {
+  const startRecordingButton = document.getElementById("start_recording_button")
+  showEliments(startRecordingButton)
+  // hide recording panel
+  const recordingPanelButton = document.getElementById("video_recording_buttons")
+  hideEliments(recordingPanelButton)
+}
+
+/// swith recording button
+export const switchRecordingButton = (switchForResume = false) => {
+  const resumeButton = document.getElementById("resume_recording_button")
+  const pauseButton = document.getElementById("pause_recording_button")
+
+  if(switchForResume){
+    showEliments(resumeButton)
+    hideEliments(pauseButton)
+  }else{
+    showEliments(pauseButton)
+    hideEliments(resumeButton)
+  }
+}
+
