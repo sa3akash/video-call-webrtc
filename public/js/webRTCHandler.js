@@ -104,6 +104,7 @@ export const sendPreOffer = (callType, callePersonalCode) => {
         const data = {callType, callePersonalCode}
         wss.sendPreOffer(data)
         ui.showCallingDialog(callCancelHandler)
+        store.setCallState(constants.callState.CALL_UNAVAILABLE)
     }
    
 }
@@ -111,10 +112,17 @@ export const sendPreOffer = (callType, callePersonalCode) => {
 
 export const handlePreOffer = (data) => {
     const {callType,callerSocketId} = data;
+
+    if(!checkCallPosibility()){
+        sendPreOfferAnswer(constants.preOfferAnswer.CALL_UNAVAILABLE,callerSocketId)
+    }
+
     connectedUserDetails = {
         socketId: callerSocketId,
         callType
     }
+    store.setCallState(constants.callState.CALL_UNAVAILABLE)
+
     if(callType === constants.callType.CHAT_PERSONAL_CODE || callType === constants.callType.VIDEO_PERSONAL_CODE){
         ui.showIncomingCall(callType,acceptCallHandler,rejectCallHandler)
     }
@@ -129,17 +137,24 @@ const acceptCallHandler = () =>{
 
 
 const rejectCallHandler = () =>{
+    setIncommingCallAvailable()
     sendPreOfferAnswer(constants.preOfferAnswer.CALL_REJECTED)
 }
 
 
 const callCancelHandler = () =>{
+    const data = {
+        connectedUserSocketId: connectedUserDetails.socketId
+    }
+    closePeerConnectionAndResetState()
+    wss.sendHangUp(data)
 }
 
 
-const sendPreOfferAnswer = (preOfferAnswer) => {
+const sendPreOfferAnswer = (preOfferAnswer,callerSocketId=null) => {
+    const callerSocketIdcheck = callerSocketId ? callerSocketId : connectedUserDetails.socketId
     const data = {
-        callerSocketId: connectedUserDetails.socketId,
+        callerSocketId: callerSocketIdcheck,
         preOfferAnswer: preOfferAnswer
     }
     ui.removeAllDialog()
@@ -153,12 +168,15 @@ export const handlePreOfferAnswer = ({preOfferAnswer}) => {
 
     if(preOfferAnswer === constants.preOfferAnswer.CALLEE_NOT_FOUND){
         ui.showInfoDialog(preOfferAnswer)
+       setIncommingCallAvailable()
     }
     if(preOfferAnswer === constants.preOfferAnswer.CALL_UNAVAILABLE){
         ui.showInfoDialog(preOfferAnswer)
+       setIncommingCallAvailable()
     }
     if(preOfferAnswer === constants.preOfferAnswer.CALL_REJECTED){
         ui.showInfoDialog(preOfferAnswer)
+       setIncommingCallAvailable()
     }
     if(preOfferAnswer === constants.preOfferAnswer.CALL_ACCEPTED){
         ui.showCallEliments(connectedUserDetails.callType)
@@ -300,6 +318,31 @@ const closePeerConnectionAndResetState = () => {
     // update ui
     ui.updateUiAfterHangUp(connectedUserDetails.callType)
     connectedUserDetails = null;
+    setIncommingCallAvailable()
 }
 
 
+
+
+/// check call posibility
+const checkCallPosibility = (callType) => {
+    const callStates = store.getState().callState;
+    if(callStates === constants.callState.CALL_AVAILABLE){
+      return true
+    }
+    if(callType === constants.callType.VIDEO_PERSONAL_CODE || callType === constants.callType.VIDEO_STRANGER && callStates === constants.callState.CALL_AVAILABLE_ONLY_CHAT){
+      return false
+    }
+    return false;
+  }
+  
+/// set call available
+
+const setIncommingCallAvailable = () => {
+    const localStream = store.getState().localStream;
+    if(localStream){
+        store.setCallState(constants.callState.CALL_AVAILABLE)
+    }else{
+        store.setCallState(constants.callState.CALL_AVAILABLE_ONLY_CHAT)
+    }
+}

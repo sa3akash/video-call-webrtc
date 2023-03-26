@@ -2,7 +2,6 @@ import * as constants from './constants.js';
 import * as eliments from "./eliments.js"
 
 
-
 export const updateLocalStream = (stream) => {
   const localVideo = document.getElementById("local_video")
   localVideo.srcObject = stream
@@ -258,6 +257,3 @@ export const updateUiAfterHangUp = (callType) => {
  // remove all dialogs
   removeAllDialog()
 }
-
-
-
