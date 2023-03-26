@@ -11,6 +11,8 @@ export const getLocalPreviews = () => {
     navigator.mediaDevices.getUserMedia({audio: true, video: true}).then((stream)=>{
         ui.updateLocalStream(stream)
         store.setLocalStream(stream)
+        store.setCallState(constants.callState.CALL_AVAILABLE)
+        ui.showVideoCallButtons()
     }).catch((err)=>{
         console.log("error when get camera or mycrophone access.")
         console.log(err)
@@ -45,7 +47,7 @@ const createPeerConnection = () => {
         }
         channelData.onmessage = (e) => {
             const message = JSON.parse(e.data)
-            console.log(message)
+            // console.log(message)
             ui.appendMessage(message)
         }
     }
@@ -267,5 +269,37 @@ export const sendMessageUsingDataChannel = (message) => {
 
 
 /// start recording
+
+
+
+
+//// hangup
+export const handleHangUp = () => {
+  const data = {
+   connectedUserSocketId : connectedUserDetails.socketId,
+  }
+  wss.sendHangUp(data)
+  closePeerConnectionAndResetState()
+}
+
+export const handleConnectedUserHangUp = (data) => {
+    console.log("handleConnectedUserHangUp pressed")
+    closePeerConnectionAndResetState()
+}
+
+const closePeerConnectionAndResetState = () => {
+    if(peerConnections){
+        peerConnections.close()
+        peerConnections = null
+    }
+    // if video call is active
+    if(connectedUserDetails.callType === constants.callType.VIDEO_PERSONAL_CODE || connectedUserDetails.callType === constants.callType.VIDEO_STRANGER){
+        store.getState().localStream.getVideoTracks()[0].enabled = true;
+        store.getState().localStream.getAudioTracks()[0].enabled = true;
+    }
+    // update ui
+    ui.updateUiAfterHangUp(connectedUserDetails.callType)
+    connectedUserDetails = null;
+}
 
 

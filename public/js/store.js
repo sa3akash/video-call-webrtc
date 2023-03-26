@@ -1,3 +1,5 @@
+import * as constants from "./constants.js"
+
 let state = {
     socketId: null,
     localStream: null,
@@ -5,7 +7,7 @@ let state = {
     screenSharingActive: false,
     screenSharingStream: null,
     allowConnectionsFromStrangers: false,
-    callState: false
+    callState: constants.callState.CALL_AVAILABLE
   };
   
   export const setSocketId = (socketId) => {

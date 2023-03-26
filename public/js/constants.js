@@ -24,3 +24,11 @@ export const webRTCSingnaling = {
 
 
 
+export const callState = {
+    CALL_AVAILABLE:"CALL_AVAILABLE",
+    CALL_UNAVAILABLE:"CALL_UNAVAILABLE",
+    CALL_AVAILABLE_ONLY_CHAT:"CALL_AVAILABLE_ONLY_CHAT",
+}
+
+
+

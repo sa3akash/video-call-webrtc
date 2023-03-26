@@ -20,7 +20,7 @@ let connectedPeers = []
 
 
 io.on("connect",(socket)=>{
-    console.log(`User connected from socket.io ${socket.id}`)
+    // console.log(`User connected from socket.io ${socket.id}`)
     // add user to connectedPeers array
     connectedPeers.push(socket.id)
 
@@ -65,10 +65,18 @@ io.on("connect",(socket)=>{
         }
     })
 
+    // user hang up
+    socket.on("user-hang-up",(data)=>{
+        const {connectedUserSocketId} = data;
+        const userExist = connectedPeers.find((id)=> id === connectedUserSocketId)
+        if(userExist){
+            io.to(connectedUserSocketId).emit("user-hang-up",data)
+        }
+    })
 
     //after user disconnect
     socket.on("disconnect",()=>{
-        console.log(`User disconnected from socket.io ${socket.id}`)
+        // console.log(`User disconnected from socket.io ${socket.id}`)
         // remove user to connectpeers
         connectedPeers.splice(connectedPeers.indexOf(socket.id),1)
     })

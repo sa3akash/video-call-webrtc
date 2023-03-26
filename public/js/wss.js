@@ -14,7 +14,7 @@ export const registerSocketEvents = (socket) => {
     ui.updatePersonalCode(socket.id)
   });
 // other listener here
-
+// reciver
   // pre offer listen
   socket.on("pre-offer", (data) => {
     // webrtc handle pre offer
@@ -43,9 +43,14 @@ export const registerSocketEvents = (socket) => {
     }
   })
 
+  // hang up
+  socket.on("user-hang-up",(data)=>{
+    webRTCHandler.handleConnectedUserHangUp(data)
+  })
 };
 
 
+///send
 export const sendPreOffer = (data) => {
     socketIO.emit("pre-offer",data)
 }
@@ -62,3 +67,8 @@ export const sendDataUsingWebRTC = (data) => {
 
 }
 
+//// send Hang up
+
+export const sendHangUp = (data) => {
+  socketIO.emit("user-hang-up",data)
+}

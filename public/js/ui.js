@@ -221,3 +221,43 @@ export const switchRecordingButton = (switchForResume = false) => {
   }
 }
 
+
+/// show video call buttons
+export const showVideoCallButtons = () => {
+  const personalCodeVideoButton = document.getElementById("personal_code_video_button")
+  const stangerCodeVideoButton = document.getElementById("stranger_video_button")
+
+  showEliments(personalCodeVideoButton)
+  showEliments(stangerCodeVideoButton)
+}
+
+
+// update ui after hangup button click
+export const updateUiAfterHangUp = (callType) => {
+  enabledDashboard()
+  //hide the call button
+  if(callType === constants.callType.VIDEO_PERSONAL_CODE || callType === constants.callType.VIDEO_STRANGER){
+    const callbutton = document.getElementById("call_buttons")
+    hideEliments(callbutton)
+  }else{
+    const chatCallButton = document.getElementById("finish_chat_button_container")
+    hideEliments(chatCallButton)
+  }
+  const newMessageInput = document.getElementById("new_message")
+  hideEliments(newMessageInput)
+  clearMessage()
+  updateMicButton(false)
+  updateCameraButton(false)
+  //update remote video and show palceholders
+  const remoteVideo = document.getElementById("remote_video")
+  hideEliments(remoteVideo)
+  const placeholder = document.getElementById("video_placeholder")
+  showEliments(placeholder)
+  const personalCodeInput = document.getElementById("personal_code_input")
+  personalCodeInput.value = ""
+ // remove all dialogs
+  removeAllDialog()
+}
+
+
+
